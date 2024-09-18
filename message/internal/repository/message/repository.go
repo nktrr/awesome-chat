@@ -1,11 +1,14 @@
 package message
 
 import (
-	"awesome-chat/gateway/internal/config"
-	"awesome-chat/gateway/internal/model"
-	"awesome-chat/gateway/internal/repository"
+	"awesome-chat/message/internal/config"
+	"awesome-chat/message/internal/model"
+	"awesome-chat/message/internal/repository"
+	"awesome-chat/message/internal/repository/message/converter"
+	modelRepo "awesome-chat/message/internal/repository/message/model"
 	"context"
 	"github.com/gocql/gocql"
+	"github.com/google/uuid"
 	"log"
 )
 
@@ -16,8 +19,6 @@ type repo struct {
 	cluster      *gocql.ClusterConfig
 	session      *gocql.Session
 }
-
-//TODO [09.09.2024] put some scylla logic
 
 func NewRepository(scyllaConfig config.ScyllaConfig) (*repo, error) {
 	cluster := gocql.NewCluster(scyllaConfig.GetAddress())
@@ -35,7 +36,7 @@ func NewRepository(scyllaConfig config.ScyllaConfig) (*repo, error) {
 	}, nil
 }
 
-func (r *repo) Create(ctx context.Context, message model.Message) error {
+func (r *repo) Create(ctx context.Context, message *model.Message) error {
 	println("create in repo")
 
 	if err := r.session.Query(`INSERT INTO messages (id, msg_text) VALUES (?, ?)`,
@@ -43,10 +44,16 @@ func (r *repo) Create(ctx context.Context, message model.Message) error {
 		log.Fatal(err)
 	}
 
-	return nil
+	return
 }
 
-func (r *repo) Get(ctx context.Context) error {
-	println("get")
-	return nil
+func (r *repo) Get(ctx context.Context, id uuid.UUID) (*model.Message, error) {
+	var msg modelRepo.Message
+
+	err := r.session.Query(`SELECT * FROM messages WHERE id == ?`, id).WithContext(ctx).Scan(&msg.ID, msg.Text)
+	if err != nil {
+		return nil, err
+	}
+
+	return converter.ToMessageFromRepo(&msg), nil
 }

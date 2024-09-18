@@ -1,10 +1,10 @@
 package api
 
 import (
-	"awesome-chat/gateway/internal/config"
-	"awesome-chat/gateway/internal/converter"
-	"awesome-chat/gateway/internal/dto"
-	"awesome-chat/gateway/internal/service"
+	"awesome-chat/message/internal/config"
+	"awesome-chat/message/internal/converter"
+	"awesome-chat/message/internal/dto"
+	"awesome-chat/message/internal/service"
 	"context"
 	"encoding/json"
 	"fmt"

@@ -14,14 +14,22 @@ services:
       - "8001:8001"
     networks:
       - services
-    #    volumes:
-    #      - ./:/build
-    #    restart: always
-    #    environment:
-    #      - KAFKA_BROKERS=host.docker.internal:9092
-  #      - jaeger
     depends_on:
       - scylla-node1
+      - kafka
+
+  message-service:
+    container_name: message-service
+    env_file:
+      - .env
+    build:
+      dockerfile: message/Dockerfile
+    profiles: [ "backend" ]
+    networks:
+      - services
+    depends_on:
+      - scylla-node1
+      - kafka
 
   scylla-node1:
     container_name: scylla-node1
@@ -32,6 +40,23 @@ services:
 #    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
     networks:
       - services
+
+  kafka:
+    container_name: kafka
+    restart: no
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    image: 'bitnami/kafka:latest'
+    networks:
+      - services
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
 
 #  postgres:
 #    container_name: postgres_container

@@ -1,8 +1,8 @@
 package service
 
 import (
-	"awesome-chat/gateway/internal/dto"
-	"awesome-chat/gateway/internal/model"
+	"awesome-chat/message/internal/dto"
+	"awesome-chat/message/internal/model"
 	"context"
 	"github.com/google/uuid"
 )

@@ -1,32 +1,45 @@
 package app
 
 import (
-	"awesome-chat/gateway/internal/api"
-	"awesome-chat/gateway/internal/config"
-	"awesome-chat/gateway/internal/kafka"
-	"awesome-chat/gateway/internal/service"
-	msgService "awesome-chat/gateway/internal/service/message"
+	"awesome-chat/message/internal/api"
+	"awesome-chat/message/internal/config"
+	"awesome-chat/message/internal/repository"
+	msgRepo "awesome-chat/message/internal/repository/message"
+	"awesome-chat/message/internal/service"
+	msgService "awesome-chat/message/internal/service/message"
 	"context"
 	"log"
 )
 
 type serviceProvider struct {
-	msgProducerCfg config.KafkaConfig
-	msgProducer    *kafka.Kafka
-	msgService     service.MessageService
-	httpServer     *api.HttpServer
-	httpConfig     config.HttpConfig
-	scyllaConfig   config.ScyllaConfig
+	msgRepository repository.MessageRepository
+	msgService    service.MessageService
+	httpServer    *api.HttpServer
+	httpConfig    config.HttpConfig
+	scyllaConfig  config.ScyllaConfig
 }
 
 func newServiceProvider() *serviceProvider {
 	return &serviceProvider{}
 }
 
+func (s *serviceProvider) MessageRepository(ctx context.Context) repository.MessageRepository {
+	var err error
+	if s.msgRepository == nil {
+		s.msgRepository, err = msgRepo.NewRepository(
+			s.ScyllaConfig(),
+		)
+	}
+	if err != nil {
+		log.Panicf("failed to init msg repo: %v", err)
+	}
+	return s.msgRepository
+}
+
 func (s *serviceProvider) MessageService(ctx context.Context) service.MessageService {
 	if s.msgService == nil {
 		s.msgService = msgService.NewService(
-			s.MessagesProducer(ctx),
+			s.MessageRepository(ctx),
 		)
 	}
 	return s.msgService
@@ -40,31 +53,6 @@ func (s *serviceProvider) HttpServer(ctx context.Context) *api.HttpServer {
 		)
 	}
 	return s.httpServer
-}
-
-func (s *serviceProvider) MessagesProducer(ctx context.Context) *kafka.Kafka {
-	if s.msgProducer == nil {
-		producer, err := kafka.NewKafka(ctx, s.MessagesProducerConfig())
-		if err != nil {
-			log.Panicf("failed to connect messages producer: %v", err)
-		}
-		s.msgProducer = producer
-	}
-	return s.msgProducer
-}
-
-func (s *serviceProvider) MessagesProducerConfig() config.KafkaConfig {
-	if s.msgProducerCfg == nil {
-		cfg, err := config.NewKafkaConfig(
-			"messages",
-			0,
-		)
-		if err != nil {
-			log.Panicf("failed to get kafka config: %v", err)
-		}
-		s.msgProducerCfg = cfg
-	}
-	return s.msgProducerCfg
 }
 
 func (s *serviceProvider) HttpConfig() config.HttpConfig {
